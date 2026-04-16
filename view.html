@@ -2,35 +2,47 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Live Tracking</title>
+<title>Live Tracking Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 body{
 margin:0;
 font-family:sans-serif;
-background:#0f172a;
+background:#020617;
 color:white;
-text-align:center;
-}
-
-#map{
-height:80vh;
-width:100%;
 }
 
 h2{
+text-align:center;
 padding:10px;
+}
+
+#map{
+height:70vh;
+}
+
+.info{
+padding:10px;
+background:#0f172a;
+}
+
+a{
+color:#22c55e;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📍 Live Tracking</h2>
+<h2>📍 Live Tracking Pro</h2>
 <div id="map"></div>
+
+<div class="info" id="info">
+Menunggu lokasi...
+</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -46,8 +58,9 @@ firebase.initializeApp(firebaseConfig);
 
 let map = L.map('map').setView([0,0], 2);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18
+// DARK MODE MAP
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap'
 }).addTo(map);
 
 let marker;
@@ -59,13 +72,22 @@ firebase.database().ref("lokasi").on("value", function(snapshot){
     let lat = data.lat;
     let lon = data.lon;
 
-    map.setView([lat, lon], 16);
+    map.setView([lat, lon], 17);
 
     if(marker){
       marker.setLatLng([lat, lon]);
     } else {
       marker = L.marker([lat, lon]).addTo(map);
     }
+
+    document.getElementById("info").innerHTML = `
+📍 Latitude: ${lat} <br>
+📍 Longitude: ${lon} <br><br>
+
+<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank">
+👉 Buka di Google Maps
+</a>
+    `;
   }
 });
 </script>
