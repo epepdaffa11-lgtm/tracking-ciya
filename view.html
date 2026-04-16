@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Live Tracking Pro</title>
+<title>Tracking Ultimate</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -11,33 +11,42 @@
 body{
 margin:0;
 font-family:sans-serif;
-background:#020617;
-color:white;
+background:#f1f5f9;
 }
 
 h2{
 text-align:center;
-padding:10px;
+padding:12px;
+background:white;
+margin:0;
 }
 
 #map{
-height:70vh;
+height:65vh;
 }
 
 .info{
-padding:10px;
-background:#0f172a;
+padding:15px;
+background:white;
+margin:10px;
+border-radius:15px;
 }
 
-a{
-color:#22c55e;
+button{
+margin-top:10px;
+padding:10px;
+border:none;
+border-radius:10px;
+background:#22c55e;
+color:white;
+width:100%;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📍 Live Tracking Pro</h2>
+<h2>📍 Tracking Ultimate</h2>
 <div id="map"></div>
 
 <div class="info" id="info">
@@ -58,13 +67,26 @@ firebase.initializeApp(firebaseConfig);
 
 let map = L.map('map').setView([0,0], 2);
 
-// DARK MODE MAP
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap'
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
 }).addTo(map);
 
-let marker;
+let markerTarget, markerMe, line;
+let history = [];
 
+let myLat, myLon;
+let lastLat, lastLon;
+
+// 📍 lokasi kamu
+navigator.geolocation.getCurrentPosition(function(pos){
+  myLat = pos.coords.latitude;
+  myLon = pos.coords.longitude;
+
+  markerMe = L.marker([myLat, myLon]).addTo(map)
+  .bindPopup("📍 Kamu");
+});
+
+// 📡 lokasi target realtime
 firebase.database().ref("lokasi").on("value", function(snapshot){
   let data = snapshot.val();
 
@@ -72,24 +94,69 @@ firebase.database().ref("lokasi").on("value", function(snapshot){
     let lat = data.lat;
     let lon = data.lon;
 
-    map.setView([lat, lon], 17);
+    map.setView([lat, lon], 15);
 
-    if(marker){
-      marker.setLatLng([lat, lon]);
+    // marker target
+    if(markerTarget){
+      markerTarget.setLatLng([lat, lon]);
     } else {
-      marker = L.marker([lat, lon]).addTo(map);
+      markerTarget = L.marker([lat, lon]).addTo(map)
+      .bindPopup("🎯 Target");
     }
 
-    document.getElementById("info").innerHTML = `
-📍 Latitude: ${lat} <br>
-📍 Longitude: ${lon} <br><br>
+    // 👣 simpan history
+    history.push([lat, lon]);
 
-<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank">
-👉 Buka di Google Maps
-</a>
-    `;
+    if(history.length > 50){
+      history.shift(); // biar ga terlalu panjang
+    }
+
+    // gambar jejak
+    if(line){
+      map.removeLayer(line);
+    }
+
+    line = L.polyline(history, {
+      color: 'red'
+    }).addTo(map);
+
+    // 🔴 garis kamu ke target
+    if(myLat){
+      L.polyline([[myLat,myLon],[lat,lon]], {color:'blue'}).addTo(map);
+    }
+
+    // 📳 notifikasi kalau gerak
+    if(lastLat && (lat !== lastLat || lon !== lastLon)){
+      notify("Target bergerak!");
+    }
+
+    lastLat = lat;
+    lastLon = lon;
+
+    updateInfo(lat, lon);
   }
 });
+
+// 📳 notifikasi
+function notify(msg){
+  if(Notification.permission === "granted"){
+    new Notification(msg);
+  } else if(Notification.permission !== "denied"){
+    Notification.requestPermission();
+  }
+}
+
+// info
+function updateInfo(lat, lon){
+  document.getElementById("info").innerHTML = `
+📍 ${lat}, ${lon}
+<button onclick="openMaps(${lat},${lon})">🚗 Navigasi</button>
+  `;
+}
+
+function openMaps(lat, lon){
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`);
+}
 </script>
 
 </body>
