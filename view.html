@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Live Tracking</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<style>
+body{
+margin:0;
+font-family:sans-serif;
+background:#0f172a;
+color:white;
+text-align:center;
+}
+
+#map{
+height:80vh;
+width:100%;
+}
+
+h2{
+padding:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📍 Live Tracking</h2>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDRAKVsQDg-7sQpUloHi_mrLfbus2jKxQs",
+  databaseURL: "https://tracking-7945d-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+let map = L.map('map').setView([0,0], 2);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18
+}).addTo(map);
+
+let marker;
+
+firebase.database().ref("lokasi").on("value", function(snapshot){
+  let data = snapshot.val();
+
+  if(data){
+    let lat = data.lat;
+    let lon = data.lon;
+
+    map.setView([lat, lon], 16);
+
+    if(marker){
+      marker.setLatLng([lat, lon]);
+    } else {
+      marker = L.marker([lat, lon]).addTo(map);
+    }
+  }
+});
+</script>
+
+</body>
+</html>

