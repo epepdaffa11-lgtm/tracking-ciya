@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tracking Ultimate</title>
+<title>Multi Tracking</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -22,36 +22,15 @@ margin:0;
 }
 
 #map{
-height:65vh;
-}
-
-.info{
-padding:15px;
-background:white;
-margin:10px;
-border-radius:15px;
-}
-
-button{
-margin-top:10px;
-padding:10px;
-border:none;
-border-radius:10px;
-background:#22c55e;
-color:white;
-width:100%;
+height:90vh;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📍 Tracking Ultimate</h2>
+<h2>📍 Multi Device Tracking</h2>
 <div id="map"></div>
-
-<div class="info" id="info">
-Menunggu lokasi...
-</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -71,92 +50,27 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-let markerTarget, markerMe, line;
-let history = [];
+let markers = {};
 
-let myLat, myLon;
-let lastLat, lastLon;
+firebase.database().ref("devices").on("value", function(snapshot){
+  let devices = snapshot.val();
 
-// 📍 lokasi kamu
-navigator.geolocation.getCurrentPosition(function(pos){
-  myLat = pos.coords.latitude;
-  myLon = pos.coords.longitude;
+  if(devices){
+    Object.keys(devices).forEach(id=>{
+      let d = devices[id];
 
-  markerMe = L.marker([myLat, myLon]).addTo(map)
-  .bindPopup("📍 Kamu");
-});
+      let lat = d.lat;
+      let lon = d.lon;
 
-// 📡 lokasi target realtime
-firebase.database().ref("lokasi").on("value", function(snapshot){
-  let data = snapshot.val();
-
-  if(data){
-    let lat = data.lat;
-    let lon = data.lon;
-
-    map.setView([lat, lon], 15);
-
-    // marker target
-    if(markerTarget){
-      markerTarget.setLatLng([lat, lon]);
-    } else {
-      markerTarget = L.marker([lat, lon]).addTo(map)
-      .bindPopup("🎯 Target");
-    }
-
-    // 👣 simpan history
-    history.push([lat, lon]);
-
-    if(history.length > 50){
-      history.shift(); // biar ga terlalu panjang
-    }
-
-    // gambar jejak
-    if(line){
-      map.removeLayer(line);
-    }
-
-    line = L.polyline(history, {
-      color: 'red'
-    }).addTo(map);
-
-    // 🔴 garis kamu ke target
-    if(myLat){
-      L.polyline([[myLat,myLon],[lat,lon]], {color:'blue'}).addTo(map);
-    }
-
-    // 📳 notifikasi kalau gerak
-    if(lastLat && (lat !== lastLat || lon !== lastLon)){
-      notify("Target bergerak!");
-    }
-
-    lastLat = lat;
-    lastLon = lon;
-
-    updateInfo(lat, lon);
+      if(markers[id]){
+        markers[id].setLatLng([lat, lon]);
+      } else {
+        markers[id] = L.marker([lat, lon]).addTo(map)
+        .bindPopup("📱 " + id);
+      }
+    });
   }
 });
-
-// 📳 notifikasi
-function notify(msg){
-  if(Notification.permission === "granted"){
-    new Notification(msg);
-  } else if(Notification.permission !== "denied"){
-    Notification.requestPermission();
-  }
-}
-
-// info
-function updateInfo(lat, lon){
-  document.getElementById("info").innerHTML = `
-📍 ${lat}, ${lon}
-<button onclick="openMaps(${lat},${lon})">🚗 Navigasi</button>
-  `;
-}
-
-function openMaps(lat, lon){
-  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`);
-}
 </script>
 
 </body>
