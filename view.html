@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Multi Tracking</title>
+<title>Live Tracking Pro+</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -11,26 +11,77 @@
 body{
 margin:0;
 font-family:sans-serif;
-background:#f1f5f9;
+background:#0f172a;
+color:white;
+display:flex;
 }
 
-h2{
+/* SIDEBAR */
+#sidebar{
+width:260px;
+background:#111827;
+height:100vh;
+overflow:auto;
+padding:10px;
+}
+
+#sidebar h3{
+margin:10px 0;
 text-align:center;
-padding:12px;
-background:white;
-margin:0;
 }
 
+.device{
+background:#1f2937;
+padding:10px;
+margin:8px 0;
+border-radius:10px;
+cursor:pointer;
+transition:0.2s;
+}
+
+.device:hover{
+background:#374151;
+}
+
+/* MAP */
 #map{
-height:90vh;
+flex:1;
+height:100vh;
+}
+
+/* INFO BOTTOM */
+#info{
+position:fixed;
+bottom:10px;
+left:270px;
+right:10px;
+background:rgba(0,0,0,0.7);
+padding:10px;
+border-radius:12px;
+font-size:13px;
+backdrop-filter: blur(6px);
+}
+
+.coord{
+color:#38bdf8;
+font-weight:bold;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📍 Multi Device Tracking</h2>
+<div id="sidebar">
+<h3>📱 Devices</h3>
+<div id="deviceList">Loading...</div>
+</div>
+
 <div id="map"></div>
+
+<div id="info">
+📡 Status: <span id="status">Menunggu data...</span><br>
+📍 Koordinat terakhir: <span class="coord" id="coords">-</span>
+</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -44,7 +95,8 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-let map = L.map('map').setView([0,0], 2);
+// MAP
+let map = L.map('map').setView([-2.5, 118], 5);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
@@ -52,24 +104,76 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let markers = {};
 
+// FOCUS DEVICE
+function focusDevice(lat, lon){
+  map.setView([lat, lon], 16);
+}
+
+// RENDER SIDEBAR
+function renderSidebar(devices){
+  let list = document.getElementById("deviceList");
+  list.innerHTML = "";
+
+  Object.keys(devices).forEach(id=>{
+    let d = devices[id];
+
+    if(!d.lat || !d.lon) return;
+
+    let div = document.createElement("div");
+    div.className = "device";
+    div.innerHTML = `
+      📱 <b>${id}</b><br>
+      📍 ${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}
+    `;
+
+    div.onclick = () => {
+      focusDevice(d.lat, d.lon);
+      markers[id].openPopup();
+    };
+
+    list.appendChild(div);
+  });
+}
+
+// FIREBASE LISTENER
 firebase.database().ref("devices").on("value", function(snapshot){
   let devices = snapshot.val();
 
-  if(devices){
-    Object.keys(devices).forEach(id=>{
-      let d = devices[id];
+  document.getElementById("status").innerText = "Live 🔴";
 
-      let lat = d.lat;
-      let lon = d.lon;
-
-      if(markers[id]){
-        markers[id].setLatLng([lat, lon]);
-      } else {
-        markers[id] = L.marker([lat, lon]).addTo(map)
-        .bindPopup("📱 " + id);
-      }
-    });
+  if(!devices){
+    document.getElementById("deviceList").innerHTML = "No devices";
+    return;
   }
+
+  renderSidebar(devices);
+
+  Object.keys(devices).forEach(id=>{
+    let d = devices[id];
+
+    let lat = d.lat;
+    let lon = d.lon;
+
+    if(!lat || !lon) return;
+
+    document.getElementById("coords").innerText =
+      lat.toFixed(5) + ", " + lon.toFixed(5);
+
+    let popupText = `
+      📱 <b>${id}</b><br>
+      📍 Lat: ${lat}<br>
+      📍 Lon: ${lon}<br>
+      🕒 ${new Date(d.time || Date.now()).toLocaleTimeString()}
+    `;
+
+    if(markers[id]){
+      markers[id].setLatLng([lat, lon]);
+      markers[id].setPopupContent(popupText);
+    } else {
+      markers[id] = L.marker([lat, lon]).addTo(map)
+      .bindPopup(popupText);
+    }
+  });
 });
 </script>
 
