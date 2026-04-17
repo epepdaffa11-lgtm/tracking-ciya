@@ -54,17 +54,7 @@ transition:0.3s;
 left:10px;
 }
 
-/* SEARCH */
-#search{
-width:100%;
-padding:8px;
-border-radius:8px;
-border:none;
-outline:none;
-margin-bottom:10px;
-}
-
-/* DEVICE ITEM */
+/* DEVICE */
 .device{
 background:#1f2937;
 padding:10px;
@@ -81,6 +71,17 @@ transform:scale(1.02);
 
 .device.active{
 background:#2563eb;
+}
+
+/* BUTTON */
+button{
+margin-top:6px;
+padding:6px 10px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+background:#38bdf8;
+font-weight:bold;
 }
 
 /* MAP */
@@ -100,7 +101,6 @@ margin-left:0;
 
 <div id="sidebar">
 <h3>📱 Devices</h3>
-<input id="search" placeholder="Cari device..." />
 <div id="deviceList"></div>
 </div>
 
@@ -128,6 +128,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let markers = {};
+let currentDevices = {};
 let lastActive = null;
 
 /* TOGGLE SIDEBAR */
@@ -141,27 +142,11 @@ toggleBtn.onclick = () => {
   toggleBtn.innerText = sidebar.classList.contains("closed") ? "⟩" : "⟨";
 };
 
-/* SEARCH */
-document.getElementById("search").addEventListener("input", function(e){
-  let val = e.target.value.toLowerCase();
-  document.querySelectorAll(".device").forEach(el=>{
-    el.style.display = el.innerText.toLowerCase().includes(val) ? "block" : "none";
-  });
-});
-
-/* FOCUS DEVICE (FIXED) */
+/* FOCUS DEVICE */
 function focusDevice(lat, lon, id){
-  if(!lat || !lon) return;
+  map.flyTo([lat, lon], 18, { duration: 0.8 });
 
-  // smooth zoom
-  map.flyTo([lat, lon], 18, {
-    duration: 0.8
-  });
-
-  // highlight sidebar
-  if(lastActive){
-    lastActive.classList.remove("active");
-  }
+  if(lastActive) lastActive.classList.remove("active");
 
   let el = document.getElementById("dev-"+id);
   if(el){
@@ -169,10 +154,19 @@ function focusDevice(lat, lon, id){
     lastActive = el;
   }
 
-  // open popup
-  if(markers[id]){
-    markers[id].openPopup();
-  }
+  if(markers[id]) markers[id].openPopup();
+}
+
+/* SET HOME */
+function setHome(id){
+  let center = map.getCenter();
+
+  firebase.database().ref("devices/" + id).update({
+    homeLat: center.lat,
+    homeLon: center.lng
+  });
+
+  alert("🏠 Home berhasil diset!");
 }
 
 /* RENDER SIDEBAR */
@@ -190,7 +184,12 @@ function renderSidebar(devices){
 
     div.innerHTML = `
       📱 <b>${id}</b><br>
-      📍 ${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}
+      📍 ${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}<br>
+      🏠 ${d.homeLat ? "Home set" : "No home"}<br>
+
+      <button onclick="event.stopPropagation(); setHome('${id}')">
+        🏠 Set Home
+      </button>
     `;
 
     div.onclick = () => {
@@ -201,10 +200,29 @@ function renderSidebar(devices){
   });
 }
 
+/* GO HOME */
+function goHome(id){
+  let d = currentDevices[id];
+
+  if(!d || !d.homeLat || !d.homeLon){
+    alert("🏠 Home belum diset!");
+    return;
+  }
+
+  map.flyTo([d.homeLat, d.homeLon], 18, { duration: 1 });
+
+  L.popup()
+    .setLatLng([d.homeLat, d.homeLon])
+    .setContent("🏠 Home: " + id)
+    .openOn(map);
+}
+
 /* FIREBASE */
 firebase.database().ref("devices").on("value", function(snapshot){
   let devices = snapshot.val();
   if(!devices) return;
+
+  currentDevices = devices;
 
   renderSidebar(devices);
 
@@ -214,9 +232,9 @@ firebase.database().ref("devices").on("value", function(snapshot){
 
     let popup = `
       📱 <b>${id}</b><br>
-      📍 Lat: ${d.lat}<br>
-      📍 Lon: ${d.lon}<br>
-      🕒 ${new Date(d.time || Date.now()).toLocaleTimeString()}
+      📍 ${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}<br><br>
+
+      <button onclick="goHome('${id}')">🏠 Go Home</button>
     `;
 
     if(markers[id]){
