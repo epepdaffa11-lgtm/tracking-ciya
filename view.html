@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tracking Satellite Pro</title>
+<title>Tracking Pro Max Satellite</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -120,12 +120,23 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-/* 🛰️ SATELLITE MAP */
+/* 🛰️ MAP FIX (ANTI ERROR) */
 let map = L.map('map').setView([-2.5, 118], 5);
 
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom: 19
-}).addTo(map);
+// SATELLITE (PRIMARY)
+let sat = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { maxZoom: 19, updateWhenIdle: true }
+);
+
+// FALLBACK NORMAL MAP (kalau satelit error)
+let osm = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxZoom: 19 }
+);
+
+// default pakai satelit
+sat.addTo(map);
 
 let markers = {};
 let currentDevices = {};
@@ -143,7 +154,9 @@ toggleBtn.onclick = () => {
 
 /* FOCUS DEVICE */
 function focusDevice(lat, lon, id){
-  map.flyTo([lat, lon], 18, { duration: 1 });
+  if(!lat || !lon) return;
+
+  map.flyTo([lat, lon], 17, { duration: 1 });
 
   if(lastActive) lastActive.classList.remove("active");
 
@@ -177,7 +190,7 @@ function goHome(id){
     return;
   }
 
-  map.flyTo([d.homeLat, d.homeLon], 18, { duration: 1 });
+  map.flyTo([d.homeLat, d.homeLon], 17, { duration: 1 });
 
   L.popup()
     .setLatLng([d.homeLat, d.homeLon])
@@ -185,7 +198,7 @@ function goHome(id){
     .openOn(map);
 }
 
-/* RENDER SIDEBAR */
+/* SIDEBAR */
 function renderSidebar(devices){
   let list = document.getElementById("deviceList");
   list.innerHTML = "";
