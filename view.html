@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tracking Pro Max</title>
+<title>Tracking Satellite Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -120,10 +120,10 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// MAP
+/* 🛰️ SATELLITE MAP */
 let map = L.map('map').setView([-2.5, 118], 5);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   maxZoom: 19
 }).addTo(map);
 
@@ -138,13 +138,12 @@ let toggleBtn = document.getElementById("toggleBtn");
 toggleBtn.onclick = () => {
   sidebar.classList.toggle("closed");
   toggleBtn.classList.toggle("closed");
-
   toggleBtn.innerText = sidebar.classList.contains("closed") ? "⟩" : "⟨";
 };
 
 /* FOCUS DEVICE */
 function focusDevice(lat, lon, id){
-  map.flyTo([lat, lon], 18, { duration: 0.8 });
+  map.flyTo([lat, lon], 18, { duration: 1 });
 
   if(lastActive) lastActive.classList.remove("active");
 
@@ -167,6 +166,23 @@ function setHome(id){
   });
 
   alert("🏠 Home berhasil diset!");
+}
+
+/* GO HOME */
+function goHome(id){
+  let d = currentDevices[id];
+
+  if(!d || !d.homeLat || !d.homeLon){
+    alert("🏠 Home belum diset!");
+    return;
+  }
+
+  map.flyTo([d.homeLat, d.homeLon], 18, { duration: 1 });
+
+  L.popup()
+    .setLatLng([d.homeLat, d.homeLon])
+    .setContent("🏠 Home: " + id)
+    .openOn(map);
 }
 
 /* RENDER SIDEBAR */
@@ -198,23 +214,6 @@ function renderSidebar(devices){
 
     list.appendChild(div);
   });
-}
-
-/* GO HOME */
-function goHome(id){
-  let d = currentDevices[id];
-
-  if(!d || !d.homeLat || !d.homeLon){
-    alert("🏠 Home belum diset!");
-    return;
-  }
-
-  map.flyTo([d.homeLat, d.homeLon], 18, { duration: 1 });
-
-  L.popup()
-    .setLatLng([d.homeLat, d.homeLon])
-    .setContent("🏠 Home: " + id)
-    .openOn(map);
 }
 
 /* FIREBASE */
