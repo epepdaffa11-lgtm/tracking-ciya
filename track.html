@@ -1,7 +1,14 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="UTF-8">
+<title>Track Device</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
 <body>
-<h2>Loading...</h2>
+
+<h2>📡 Tracking Aktif...</h2>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -14,19 +21,23 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-navigator.geolocation.getCurrentPosition(function(pos){
+// ambil nama device (sekali aja)
+let deviceId = localStorage.getItem("deviceId");
 
-  firebase.database().ref("lokasi").set({
+if(!deviceId){
+  deviceId = prompt("Nama HP kamu (contoh: HP Rumah):");
+  localStorage.setItem("deviceId", deviceId);
+}
+
+// kirim lokasi terus
+navigator.geolocation.watchPosition(function(pos){
+  firebase.database().ref("devices/" + deviceId).set({
     lat: pos.coords.latitude,
-    lon: pos.coords.longitude
+    lon: pos.coords.longitude,
+    time: Date.now()
   });
-
-  document.body.innerHTML = "✅ Lokasi terkirim";
-
-}, function(){
-  document.body.innerHTML = "❌ Izin lokasi ditolak";
 });
 </script>
 
 </body>
-</html>
+  </html>
