@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Live Tracking Pro+</title>
+<title>Tracking Pro Max</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -11,25 +11,45 @@
 body{
 margin:0;
 font-family:sans-serif;
-background:#0f172a;
+background:#0b1220;
 color:white;
 display:flex;
+overflow:hidden;
 }
 
 /* SIDEBAR */
 #sidebar{
-width:260px;
+width:280px;
 background:#111827;
 height:100vh;
 overflow:auto;
 padding:10px;
+transition:0.3s;
+position:relative;
 }
 
-#sidebar h3{
-margin:10px 0;
-text-align:center;
+#sidebar.closed{
+width:0;
+padding:0;
+overflow:hidden;
 }
 
+/* TOGGLE BUTTON */
+#toggleBtn{
+position:absolute;
+top:10px;
+right:-15px;
+background:#38bdf8;
+border:none;
+color:black;
+width:30px;
+height:30px;
+border-radius:50%;
+cursor:pointer;
+font-weight:bold;
+}
+
+/* DEVICE BOX */
 .device{
 background:#1f2937;
 padding:10px;
@@ -49,17 +69,30 @@ flex:1;
 height:100vh;
 }
 
-/* INFO BOTTOM */
-#info{
-position:fixed;
-bottom:10px;
-left:270px;
-right:10px;
-background:rgba(0,0,0,0.7);
-padding:10px;
+/* TOP HUD */
+#hud{
+position:absolute;
+top:10px;
+left:10px;
+z-index:999;
+background:rgba(0,0,0,0.6);
+padding:10px 14px;
 border-radius:12px;
-font-size:13px;
 backdrop-filter: blur(6px);
+font-size:13px;
+}
+
+/* BOTTOM INFO */
+#info{
+position:absolute;
+bottom:10px;
+left:10px;
+z-index:999;
+background:rgba(0,0,0,0.6);
+padding:10px 14px;
+border-radius:12px;
+backdrop-filter: blur(6px);
+font-size:13px;
 }
 
 .coord{
@@ -72,15 +105,22 @@ font-weight:bold;
 <body>
 
 <div id="sidebar">
+<button id="toggleBtn">⟨</button>
+
 <h3>📱 Devices</h3>
 <div id="deviceList">Loading...</div>
 </div>
 
 <div id="map"></div>
 
+<!-- HUD -->
+<div id="hud">
+📡 Status: <span id="status">Loading...</span>
+</div>
+
+<!-- INFO -->
 <div id="info">
-📡 Status: <span id="status">Menunggu data...</span><br>
-📍 Koordinat terakhir: <span class="coord" id="coords">-</span>
+📍 Koordinat: <span class="coord" id="coords">-</span>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -104,19 +144,27 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let markers = {};
 
-// FOCUS DEVICE
+// TOGGLE SIDEBAR
+let sidebar = document.getElementById("sidebar");
+let toggleBtn = document.getElementById("toggleBtn");
+
+toggleBtn.onclick = () => {
+  sidebar.classList.toggle("closed");
+  toggleBtn.innerText = sidebar.classList.contains("closed") ? "⟩" : "⟨";
+};
+
+// FOCUS MAP
 function focusDevice(lat, lon){
-  map.setView([lat, lon], 16);
+  map.setView([lat, lon], 17);
 }
 
-// RENDER SIDEBAR
+// SIDEBAR RENDER
 function renderSidebar(devices){
   let list = document.getElementById("deviceList");
   list.innerHTML = "";
 
   Object.keys(devices).forEach(id=>{
     let d = devices[id];
-
     if(!d.lat || !d.lon) return;
 
     let div = document.createElement("div");
@@ -128,18 +176,18 @@ function renderSidebar(devices){
 
     div.onclick = () => {
       focusDevice(d.lat, d.lon);
-      markers[id].openPopup();
+      if(markers[id]) markers[id].openPopup();
     };
 
     list.appendChild(div);
   });
 }
 
-// FIREBASE LISTENER
+// FIREBASE
 firebase.database().ref("devices").on("value", function(snapshot){
   let devices = snapshot.val();
 
-  document.getElementById("status").innerText = "Live 🔴";
+  document.getElementById("status").innerText = "LIVE 🔴";
 
   if(!devices){
     document.getElementById("deviceList").innerHTML = "No devices";
@@ -151,27 +199,24 @@ firebase.database().ref("devices").on("value", function(snapshot){
   Object.keys(devices).forEach(id=>{
     let d = devices[id];
 
-    let lat = d.lat;
-    let lon = d.lon;
-
-    if(!lat || !lon) return;
+    if(!d.lat || !d.lon) return;
 
     document.getElementById("coords").innerText =
-      lat.toFixed(5) + ", " + lon.toFixed(5);
+      d.lat.toFixed(5) + ", " + d.lon.toFixed(5);
 
-    let popupText = `
+    let popup = `
       📱 <b>${id}</b><br>
-      📍 Lat: ${lat}<br>
-      📍 Lon: ${lon}<br>
+      📍 ${d.lat}<br>
+      📍 ${d.lon}<br>
       🕒 ${new Date(d.time || Date.now()).toLocaleTimeString()}
     `;
 
     if(markers[id]){
-      markers[id].setLatLng([lat, lon]);
-      markers[id].setPopupContent(popupText);
+      markers[id].setLatLng([d.lat, d.lon]);
+      markers[id].setPopupContent(popup);
     } else {
-      markers[id] = L.marker([lat, lon]).addTo(map)
-      .bindPopup(popupText);
+      markers[id] = L.marker([d.lat, d.lon]).addTo(map)
+      .bindPopup(popup);
     }
   });
 });
