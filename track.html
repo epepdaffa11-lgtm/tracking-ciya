@@ -9,6 +9,7 @@
 <body>
 
 <h2>📡 Tracking Aktif...</h2>
+<p id="status">Menunggu lokasi...</p>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -21,7 +22,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// ambil nama device (auto simpan)
+// ambil nama device
 let deviceId = localStorage.getItem("deviceId");
 
 if(!deviceId){
@@ -31,25 +32,37 @@ if(!deviceId){
 
 // fungsi kirim lokasi
 function kirimLokasi(pos){
+  let lat = pos.coords.latitude;
+  let lon = pos.coords.longitude;
+
   firebase.database().ref("devices/" + deviceId).set({
-    lat: pos.coords.latitude,
-    lon: pos.coords.longitude,
-    acc: pos.coords.accuracy,
+    lat: lat,
+    lon: lon,
     time: Date.now()
   });
+
+  document.getElementById("status").innerHTML =
+    "📍 Lokasi terkirim:<br>" + lat + ", " + lon;
 }
 
-// error handler
+// error
 function error(err){
-  document.body.innerHTML = "❌ Lokasi gagal: " + err.message;
+  document.getElementById("status").innerHTML =
+    "❌ Error: " + err.message;
 }
 
-// TRACK LEBIH AKURAT & CEPAT
+// 🔥 TRACK UTAMA (AKURAT)
 navigator.geolocation.watchPosition(kirimLokasi, error, {
   enableHighAccuracy: true,
   maximumAge: 0,
   timeout: 5000
 });
+
+// 🔥 PAKSA UPDATE TIAP 5 DETIK
+setInterval(()=>{
+  navigator.geolocation.getCurrentPosition(kirimLokasi, error);
+}, 5000);
+
 </script>
 
 </body>
