@@ -2,13 +2,22 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Track Device</title>
+<title>Tracking Device</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+font-family:sans-serif;
+text-align:center;
+background:#0f172a;
+color:white;
+}
+</style>
 </head>
 
 <body>
 
-<h2>📡 Tracking Aktif...</h2>
+<h2>📡 Tracking Aktif</h2>
 <p id="status">Menunggu lokasi...</p>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -22,7 +31,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// ambil nama device
+// DEVICE ID (auto simpan)
 let deviceId = localStorage.getItem("deviceId");
 
 if(!deviceId){
@@ -30,39 +39,73 @@ if(!deviceId){
   localStorage.setItem("deviceId", deviceId);
 }
 
-// fungsi kirim lokasi
+// STATUS
+function updateStatus(text){
+  document.getElementById("status").innerHTML = text;
+}
+
+// KIRIM LOKASI
 function kirimLokasi(pos){
   let lat = pos.coords.latitude;
   let lon = pos.coords.longitude;
+  let acc = pos.coords.accuracy;
 
   firebase.database().ref("devices/" + deviceId).set({
     lat: lat,
     lon: lon,
+    acc: acc,
     time: Date.now()
   });
 
-  document.getElementById("status").innerHTML =
-    "📍 Lokasi terkirim:<br>" + lat + ", " + lon;
+  updateStatus(`
+  📍 ${lat}, ${lon} <br>
+  🎯 Akurasi: ${acc}m <br>
+  ⏱️ ${new Date().toLocaleTimeString()}
+  `);
 }
 
-// error
+// ERROR
 function error(err){
-  document.getElementById("status").innerHTML =
-    "❌ Error: " + err.message;
+  updateStatus("❌ Error: " + err.message);
 }
 
-// 🔥 TRACK UTAMA (AKURAT)
+// 🔥 TRACK UTAMA
 navigator.geolocation.watchPosition(kirimLokasi, error, {
   enableHighAccuracy: true,
   maximumAge: 0,
-  timeout: 5000
+  timeout: 10000
 });
 
-// 🔥 PAKSA UPDATE TIAP 5 DETIK
+// 🔥 PAKSA UPDATE TIAP 3 DETIK
 setInterval(()=>{
-  navigator.geolocation.getCurrentPosition(kirimLokasi, error);
-}, 5000);
+  navigator.geolocation.getCurrentPosition(kirimLokasi, error, {
+    enableHighAccuracy: true
+  });
+}, 3000);
 
+// 🔥 ANTI SLEEP (BIAR GA DIMATIIN SISTEM)
+setInterval(()=>{
+  console.log("tracking aktif...");
+}, 2000);
+
+// 🔥 JAGA LAYAR HIDUP (WAKE LOCK)
+let wakeLock = null;
+
+async function keepAwake(){
+  try{
+    wakeLock = await navigator.wakeLock.request('screen');
+  }catch(e){
+    console.log("WakeLock gagal");
+  }
+}
+
+keepAwake();
+
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible"){
+    keepAwake();
+  }
+});
 </script>
 
 </body>
