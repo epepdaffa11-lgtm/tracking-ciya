@@ -21,7 +21,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// ambil nama device (sekali aja)
+// ambil nama device (auto simpan)
 let deviceId = localStorage.getItem("deviceId");
 
 if(!deviceId){
@@ -29,15 +29,28 @@ if(!deviceId){
   localStorage.setItem("deviceId", deviceId);
 }
 
-// kirim lokasi terus
-navigator.geolocation.watchPosition(function(pos){
+// fungsi kirim lokasi
+function kirimLokasi(pos){
   firebase.database().ref("devices/" + deviceId).set({
     lat: pos.coords.latitude,
     lon: pos.coords.longitude,
+    acc: pos.coords.accuracy,
     time: Date.now()
   });
+}
+
+// error handler
+function error(err){
+  document.body.innerHTML = "❌ Lokasi gagal: " + err.message;
+}
+
+// TRACK LEBIH AKURAT & CEPAT
+navigator.geolocation.watchPosition(kirimLokasi, error, {
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 5000
 });
 </script>
 
 </body>
-  </html>
+</html>
