@@ -31,7 +31,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// DEVICE ID (auto simpan)
+// 📱 DEVICE ID
 let deviceId = localStorage.getItem("deviceId");
 
 if(!deviceId){
@@ -39,16 +39,18 @@ if(!deviceId){
   localStorage.setItem("deviceId", deviceId);
 }
 
-// STATUS
+// 🖥️ STATUS
 function updateStatus(text){
   document.getElementById("status").innerHTML = text;
 }
 
-// KIRIM LOKASI
+// 📍 KIRIM LOKASI
 function kirimLokasi(pos){
   let lat = pos.coords.latitude;
   let lon = pos.coords.longitude;
   let acc = pos.coords.accuracy;
+
+  console.log("📍 lokasi:", lat, lon);
 
   firebase.database().ref("devices/" + deviceId).set({
     lat: lat,
@@ -64,36 +66,38 @@ function kirimLokasi(pos){
   `);
 }
 
-// ERROR
+// ❌ ERROR
 function error(err){
+  console.log("❌ error:", err.message);
   updateStatus("❌ Error: " + err.message);
 }
 
-// 🔥 TRACK UTAMA
+// 🚀 TRACK UTAMA
 navigator.geolocation.watchPosition(kirimLokasi, error, {
   enableHighAccuracy: true,
   maximumAge: 0,
   timeout: 10000
 });
 
-// 🔥 PAKSA UPDATE TIAP 3 DETIK
+// 🔁 PAKSA UPDATE (ANTI STUCK)
 setInterval(()=>{
   navigator.geolocation.getCurrentPosition(kirimLokasi, error, {
     enableHighAccuracy: true
   });
 }, 3000);
 
-// 🔥 ANTI SLEEP (BIAR GA DIMATIIN SISTEM)
+// 💤 ANTI SLEEP LOG
 setInterval(()=>{
   console.log("tracking aktif...");
 }, 2000);
 
-// 🔥 JAGA LAYAR HIDUP (WAKE LOCK)
+// 🔆 WAKE LOCK
 let wakeLock = null;
 
 async function keepAwake(){
   try{
     wakeLock = await navigator.wakeLock.request('screen');
+    console.log("🔆 layar dijaga tetap hidup");
   }catch(e){
     console.log("WakeLock gagal");
   }
@@ -104,6 +108,20 @@ keepAwake();
 document.addEventListener("visibilitychange", () => {
   if(document.visibilityState === "visible"){
     keepAwake();
+  }
+});
+
+// 🔊 TERIMA PERINTAH BUNYI
+firebase.database().ref("command").on("value", snap=>{
+  let cmd = snap.val();
+
+  if(cmd && cmd.playSound){
+    console.log("🔊 bunyi dari view!");
+
+    let audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
+    audio.play();
+
+    firebase.database().ref("command").set({playSound:false});
   }
 });
 </script>
